@@ -1,0 +1,35 @@
+{
+  "chains": {
+    "base-sepolia": {
+      "eid": 40245,
+      "rpc": "https://base-sepolia-rpc.publicnode.com",
+      "signer": "0xB6918DaaB07e31556B45d7Fd2a33021Bc829adf4",
+      "oapp": "0x4180D4232E975Eac806eAa96eF06cbEdE715060c"
+    },
+    "optimism-sepolia": {
+      "eid": 40232,
+      "rpc": "https://hardworking-billowing-wave.optimism-sepolia.quiknode.pro/0299ce7efc60c95b6cc8d9aef00bdc27ebae029c/",
+      "signer": "0xB6918DaaB07e31556B45d7Fd2a33021Bc829adf4",
+      "oapp": "0x4180D4232E975Eac806eAa96eF06cbEdE715060c"
+    }
+  },
+  "pathways": [
+    {
+      "from": "base-sepolia",
+      "to": "optimism-sepolia",
+      "requiredDVNs": ["LayerZero Labs"],
+      "optionalDVNs": [],
+      "optionalDVNThreshold": 0,
+      "confirmations": [5, 5],
+      "maxMessageSize": 10000,
+      "enforcedOptions": []
+    }
+  ],
+  "bidirectional": true,
+  "dvns": {
+    "LayerZero Labs": {
+      "base-sepolia": "0xe1a12515f9ab2764b887bf60b923ca494ebbb2d6",
+      "optimism-sepolia": "0xd680ec569f269aa7015f7979b4f1239b5aa4582c"
+    }
+  }
+}
