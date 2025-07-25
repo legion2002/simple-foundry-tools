@@ -703,8 +703,18 @@ contract WireOApp is Script {
                 continue;
             }
 
-            bytes memory currentOptions = IOAppWithEnforcedOptions(oapp).enforcedOptions(dstEid, opt.msgType);
-            if (!areOptionsEqual(currentOptions, expectedOptions)) {
+            bytes memory currentOptions;
+            bool hasOptions = false;
+            
+            // Try to get enforced options, handle contracts without this function
+            try IOAppWithEnforcedOptions(oapp).enforcedOptions(dstEid, opt.msgType) returns (bytes memory opts) {
+                currentOptions = opts;
+                hasOptions = true;
+            } catch {
+                currentOptions = "";
+            }
+            
+            if (hasOptions && !areOptionsEqual(currentOptions, expectedOptions)) {
                 params[paramsNeeded] =
                     EnforcedOptionParam({eid: dstEid, msgType: opt.msgType, options: expectedOptions});
                 paramsNeeded++;
@@ -820,8 +830,12 @@ contract WireOApp is Script {
         // Check enforced options
         for (uint256 i = 0; i < pathway.enforcedOptions.length; i++) {
             EnforcedOptions memory opt = pathway.enforcedOptions[i];
-            bytes memory enforcedOpts =
-                IOAppWithEnforcedOptions(pathway.srcOApp).enforcedOptions(pathway.dstEid, opt.msgType);
+            bytes memory enforcedOpts;
+            try IOAppWithEnforcedOptions(pathway.srcOApp).enforcedOptions(pathway.dstEid, opt.msgType) returns (bytes memory opts) {
+                enforcedOpts = opts;
+            } catch {
+                enforcedOpts = "";
+            }
             console.log("  Enforced options (msgType", opt.msgType, "):", enforcedOpts.length > 0 ? "YES" : "NO");
         }
 
@@ -1133,9 +1147,19 @@ contract WireOApp is Script {
                 continue;
             }
 
-            bytes memory currentOptions =
-                IOAppWithEnforcedOptions(pathway.srcOApp).enforcedOptions(pathway.dstEid, opt.msgType);
-            bool optMatch = areOptionsEqual(currentOptions, expectedOptions);
+            bytes memory currentOptions;
+            bool hasEnforcedOptions = false;
+            
+            // Try to get enforced options, but handle contracts that don't have this function
+            try IOAppWithEnforcedOptions(pathway.srcOApp).enforcedOptions(pathway.dstEid, opt.msgType) returns (bytes memory opts) {
+                currentOptions = opts;
+                hasEnforcedOptions = true;
+            } catch {
+                // Contract doesn't have enforcedOptions function or it reverted
+                currentOptions = "";
+            }
+            
+            bool optMatch = hasEnforcedOptions ? areOptionsEqual(currentOptions, expectedOptions) : (expectedOptions.length == 1);
 
             if (verbose || !optMatch) {
                 console.log(string.concat("    Enforced Options (msgType ", vm.toString(opt.msgType), "):"));
@@ -1832,17 +1856,8 @@ contract WireOApp is Script {
         if (raw.enforcedOptions.length > 0 && raw.enforcedOptions[0].length > 0) {
             pathway.enforcedOptions = raw.enforcedOptions[0];
         } else {
-            // Default if no options specified
-            pathway.enforcedOptions = new EnforcedOptions[](1);
-            pathway.enforcedOptions[0] = EnforcedOptions({
-                msgType: MSG_TYPE_STANDARD,
-            lzReceiveGas: 200000,
-            lzReceiveValue: 0,
-            lzComposeGas: 0,
-            lzComposeIndex: 0,
-            lzNativeDropAmount: 0,
-            lzNativeDropRecipient: address(0)
-        });
+            // No enforced options specified
+            pathway.enforcedOptions = new EnforcedOptions[](0);
         }
 
         // Resolve required DVN names to addresses for SOURCE chain (for send config)
@@ -1937,17 +1952,8 @@ contract WireOApp is Script {
             // Use same options as A->B
             pathway.enforcedOptions = raw.enforcedOptions[0];
         } else {
-            // Default if no options specified
-            pathway.enforcedOptions = new EnforcedOptions[](1);
-            pathway.enforcedOptions[0] = EnforcedOptions({
-                msgType: MSG_TYPE_STANDARD,
-            lzReceiveGas: 200000,
-            lzReceiveValue: 0,
-            lzComposeGas: 0,
-            lzComposeIndex: 0,
-            lzNativeDropAmount: 0,
-            lzNativeDropRecipient: address(0)
-            });
+            // No enforced options specified
+            pathway.enforcedOptions = new EnforcedOptions[](0);
         }
 
         // Resolve required DVN names to addresses for SOURCE chain (for send config)
@@ -2085,7 +2091,15 @@ contract WireOApp is Script {
 
     /// @notice Map chain names to their deployment JSON keys for deployment files
     function mapChainNameForDeployment(string memory chain) internal pure returns (string memory) {
-        // For deployment JSON, chains are typically stored with the "-mainnet" suffix
+        // Handle testnet mappings
+        if (keccak256(bytes(chain)) == keccak256(bytes("base-sepolia"))) {
+            return "basesep-testnet";
+        }
+        if (keccak256(bytes(chain)) == keccak256(bytes("optimism-sepolia"))) {
+            return "optsep-testnet";
+        }
+        
+        // For mainnet chains, append "-mainnet" suffix
         return string.concat(chain, "-mainnet");
     }
 
